@@ -98,7 +98,11 @@ train_path = train_path[train_path["label"].isin(label_value.keys())].copy()
 train_path["label"] = train_path["label"].astype(int)
 train_path["label_text"] = train_path["label"].map(label_value)
 
-# 计算 label 分布
+# 加上与label的值对应的文本
+for d in [train_path, valid_path, test_path]:
+    d["label"] = d["label"].astype(int)
+    d["label_text"] = d["label"].map(label_value)
+# 计算label分布
 plt.figure(figsize=(8,5))
 sns.countplot(data=train_path, x="label_text", order=label_order, palette="viridis")
 plt.title("Label Distribution")
@@ -121,15 +125,15 @@ plt.title("Fake News Over Time")
 plt.xticks(rotation=45)
 plt.savefig("./liar2_dataset/images/fake_news_over_time.png")
 
-# 进行 TF-IDF 特征提取（SVM）
-vectorizer = TfidfVectorizer(max_features=5000)         # 取 5000 个最重要的词, 可修改
+# 进行TF-IDF特征提取（SVM）
+vectorizer = TfidfVectorizer(max_features=5000)         # 取5000个最重要的词, 可修改
 train_feature = vectorizer.fit_transform(train_path["clean_statement_svm"])
 valid_feature = vectorizer.transform(valid_path["clean_statement_svm"])
 test_feature = vectorizer.transform(test_path["clean_statement_svm"])
 
 print(f"TF-IDF Train Shape: {train_feature.shape}")
 
-# Tokenizer 处理（LSTM）
+# Tokenizer处理（LSTM）
 max_words = 10000     # 词汇表大小
 max_len = 100         # 处理的最大文本长度, 可修改
 
@@ -143,7 +147,7 @@ test_seq = pad_sequences(lstm_tokenizer.texts_to_sequences(test_path["clean_stat
 
 print(f"LSTM Tokenized Train Shape: {train_seq.shape}")
 
-# Tokenizer 处理（BERT）
+# Tokenizer处理（BERT）
 bert_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
 def encode(texts):
