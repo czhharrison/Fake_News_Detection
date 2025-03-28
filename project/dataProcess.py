@@ -5,13 +5,16 @@ import nltk
 import matplotlib.pyplot as plt
 import seaborn as sns
 from nltk.corpus import stopwords
+from nltk import pos_tag, word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from transformers import BertTokenizer
 
-# 下载NLTK停用词
+# 下载NLTK资源
 nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
 
 # 数据路径
 data_path = "./liar_dataset/downloads/extracted/ae6492a79e60a0c2bf4b97b2f29ef984fece206d21b917f538012603d0b54d9c"
@@ -34,25 +37,41 @@ test_data = pd.read_csv(test_path, sep='\t', names=column_names, header=None)
 valid_data = pd.read_csv(valid_path, sep='\t', names=column_names, header=None)
 
 # 数据清理
-# 构建语义保留的停用词列表
+# 构建停用词列表
 default_stopwords = set(stopwords.words('english'))
 negation_words = {
     "no", "not", "nor", "never", "none", "nobody", "nothing", "neither",
     "isn't", "wasn't", "shouldn't", "wouldn't", "couldn't", "won't", "don't", "doesn't", "didn't", "can't"
 }
-# 移除除否定词之外的停用词
+# 移除否定词
 custom_stopwords = default_stopwords - negation_words
-def clean(text):
-    text = text.lower()             # 所有文本转换为小写
-    text = re.sub(r'[^a-z\s]', '', text)        # 仅保留字母和空格
+
+# 轻度清洗（LSTM）
+def lstm_clean(text):
+    text = text.lower()
+    text = re.sub(r'[^a-z\s]', '', text)
     words = text.split()
-    words = [word for word in words if word not in custom_stopwords]  # 去除停用词
+    words = [word for word in words if word not in custom_stopwords]
     return " ".join(words)
 
+# 词性过滤（SVM）
+def svm_clean(text):
+    text = text.lower()
+    text = re.sub(r'[^a-z\s]', '', text)
+    tokens = word_tokenize(text)
+    tagged = pos_tag(tokens)
+    keywords = [word for word, tag in tagged if tag.startswith('NN') or tag.startswith('VB') or tag.startswith('JJ') or tag.startswith('RB')]
+    return " ".join(keywords)
+
 # 对新闻主体进行文本清理
-train_data["clean_statement"] = train_data["statement"].apply(clean)
-test_data["clean_statement"] = test_data["statement"].apply(clean)
-valid_data["clean_statement"] = valid_data["statement"].apply(clean)
+train_data["clean_statement"] = train_data["statement"].apply(lstm_clean)
+test_data["clean_statement"] = test_data["statement"].apply(lstm_clean)
+valid_data["clean_statement"] = valid_data["statement"].apply(lstm_clean)
+
+# 额外生成词性过滤版本（用于SVM）
+train_data["clean_statement_svm"] = train_data["statement"].apply(svm_clean)
+test_data["clean_statement_svm"] = test_data["statement"].apply(svm_clean)
+valid_data["clean_statement_svm"] = valid_data["statement"].apply(svm_clean)
 
 # 填充空值
 for d in [train_data, test_data, valid_data]:
@@ -68,7 +87,6 @@ plt.ylabel("Count")
 plt.title("Distribution of Labels in Training Set")
 plt.xticks(rotation=20)
 plt.savefig("./liar_dataset/images/label_distribution.png")
-
 
 # 计算文本长度分布
 train_data["text_length"] = train_data["statement"].apply(lambda x: len(x.split()))
@@ -90,7 +108,6 @@ plt.title("Fake News Trends Over Time")
 plt.xticks(rotation=30)
 plt.savefig("./liar_dataset/images/fake_news_trend.png")
 
-
 # 真假新闻的主题分布（前10个最常见的主题）
 top_subjects = train_data["subject"].value_counts().nlargest(10).index
 filtered_df = train_data[train_data["subject"].isin(top_subjects)]
@@ -103,12 +120,11 @@ plt.title("Top 10 Subjects and Their News Categories")
 plt.xticks(rotation=30)
 plt.savefig("./liar_dataset/images/subject_vs_news.png")
 
-
 # 进行 TF-IDF 特征提取（SVM）
 vectorizer = TfidfVectorizer(max_features=5000)         # 取 5000 个最重要的词, 可修改
-train_feature = vectorizer.fit_transform(train_data["clean_statement"])
-test_feature = vectorizer.transform(test_data["clean_statement"])
-valid_feature = vectorizer.transform(valid_data["clean_statement"])
+train_feature = vectorizer.fit_transform(train_data["clean_statement_svm"])
+test_feature = vectorizer.transform(test_data["clean_statement_svm"])
+valid_feature = vectorizer.transform(valid_data["clean_statement_svm"])
 
 print(f"TF-IDF Train Shape: {train_feature.shape}")
 
