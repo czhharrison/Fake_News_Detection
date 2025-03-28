@@ -34,11 +34,19 @@ test_data = pd.read_csv(test_path, sep='\t', names=column_names, header=None)
 valid_data = pd.read_csv(valid_path, sep='\t', names=column_names, header=None)
 
 # 数据清理
+# 构建语义保留的停用词列表
+default_stopwords = set(stopwords.words('english'))
+negation_words = {
+    "no", "not", "nor", "never", "none", "nobody", "nothing", "neither",
+    "isn't", "wasn't", "shouldn't", "wouldn't", "couldn't", "won't", "don't", "doesn't", "didn't", "can't"
+}
+# 移除除否定词之外的停用词
+custom_stopwords = default_stopwords - negation_words
 def clean(text):
     text = text.lower()             # 所有文本转换为小写
     text = re.sub(r'[^a-z\s]', '', text)        # 仅保留字母和空格
     words = text.split()
-    words = [word for word in words if word not in stopwords.words('english')]  # 去除停用词
+    words = [word for word in words if word not in custom_stopwords]  # 去除停用词
     return " ".join(words)
 
 # 对新闻主体进行文本清理
