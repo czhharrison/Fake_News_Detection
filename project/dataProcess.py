@@ -68,7 +68,7 @@ train_data["clean_statement"] = train_data["statement"].apply(lstm_clean)
 test_data["clean_statement"] = test_data["statement"].apply(lstm_clean)
 valid_data["clean_statement"] = valid_data["statement"].apply(lstm_clean)
 
-# 额外生成词性过滤版本（用于SVM）
+# 生成SVM版本
 train_data["clean_statement_svm"] = train_data["statement"].apply(svm_clean)
 test_data["clean_statement_svm"] = test_data["statement"].apply(svm_clean)
 valid_data["clean_statement_svm"] = valid_data["statement"].apply(svm_clean)
